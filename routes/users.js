@@ -38,6 +38,10 @@ router.post('/signup', cors.corsWithOptions,  (req, res, next) => {
       user.lastname = req.body.lastname;
       if (req.body.role)
       user.role = req.body.role;
+      if (req.body.email)
+      user.email = req.body.email;
+      if (req.body.mobile_no)
+      user.mobile_no = req.body.mobile_no;
       user.save((err, user) => {
         if (err) {
           res.statusCode = 500;
@@ -70,11 +74,13 @@ router.get('/logout', function(req, res){
 
 router.post('/forgot', (req, res, next) => {
   if(req.body.email) {
-    const mailOptions = {
+    User.findOne({email: req.body.email})
+    .then((User)=>{
+      const mailOptions = {
       from: config.mailer.username, // sender's address
-      to: req.body.email, // receiver's address
+      to: User.email, // receiver's address
       subject: 'Password Reset', // Subject line
-      html: '<h1>This is sent from post</h1>'// plain text body
+      html: '<h1>If you received this email, you previous registered and requested to reset your password</h1>'// plain text body
     };
     transporter.sendMail(mailOptions, function (err, info) {
       if(err)
@@ -91,6 +97,18 @@ router.post('/forgot', (req, res, next) => {
         res.json({success: true, status: 'Email sent successfully!'});
       }
    });
+    }).catch((err)=>{
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.json({failed: true, status: 'No account is registered with that email'});
+    });
+  }
+  else
+  {
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.json({failed: true, status: 'No email is entered'});
+    return;
   }
 });
 
