@@ -1,7 +1,6 @@
 var express = require('express');
 const bodyParser = require('body-parser');
 var User = require('../models/user');
-var passport = require('passport');
 var authenticate = require('../authenticate');
 var cors = require('./cors');
 var transporter = require('../mailer');
@@ -22,49 +21,43 @@ router.get('/', cors.corsWithOptions, authenticate.verifyUser, authenticate.veri
 });
 
 router.post('/signup', cors.corsWithOptions,  (req, res, next) => {
-  User.register(new User({username: req.body.username}), 
-    req.body.password, (err, user) => {
-    if(err) {
+  var new_user = new User({
+    username: req.body.username,
+    password: req.body.password,
+    firstname: req.body.firstname,
+    middlename: req.body.middlename,
+    lastname: req.body.lastname,
+    role: req.body.role,
+    email: req.body.email,
+    mobile_no: req.body.mobile_no
+  });
+
+  new_user.save(function(err) {
+    if (err) 
+    {
       res.statusCode = 500;
       res.setHeader('Content-Type', 'application/json');
       res.json({err: err});
+      return;
     }
-    else {
-      if (req.body.firstname)
-        user.firstname = req.body.firstname;
-      if (req.body.middlename)
-        user.middlename = req.body.middlename;
-      if (req.body.lastname)
-      user.lastname = req.body.lastname;
-      if (req.body.role)
-      user.role = req.body.role;
-      if (req.body.email)
-      user.email = req.body.email;
-      if (req.body.mobile_no)
-      user.mobile_no = req.body.mobile_no;
-      user.save((err, user) => {
-        if (err) {
-          res.statusCode = 500;
-          res.setHeader('Content-Type', 'application/json');
-          res.json({err: err});
-          return;
-        }
-        passport.authenticate('local')(req, res, () => {
-          res.statusCode = 200;
-          res.setHeader('Content-Type', 'application/json');
-          res.json({success: true, status: 'Registration Successful!'});
-      });
-      });
+    else 
+    {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.json({success: true, status: 'Registration Successful!'});
     }
-  });
+});
 });
 
-router.post('/login', cors.corsWithOptions,  passport.authenticate('local'), (req, res, next) => {
+router.post('/login', cors.corsWithOptions,  authenticate.userAuthenticate, (req, res, next) => {
 
-  var token = authenticate.getToken({_id: req.user._id});
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'application/json');
-  res.json({success: true, token: token, status: 'You are successfully logged in!'});
+  User.findOne( {username: req.body.username} ).
+  then((user)=>{
+    var token = authenticate.getToken({_id: user._id});
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json({success: true, token: token, status: 'You are successfully logged in!'});
+  })
 });
 
 router.get('/logout', function(req, res){
@@ -80,7 +73,7 @@ router.post('/forgot', (req, res, next) => {
       from: config.mailer.username, // sender's address
       to: User.email, // receiver's address
       subject: 'Password Reset', // Subject line
-      html: '<h1>If you received this email, you previous registered and requested to reset your password</h1>'// plain text body
+      html: '<h1>If you received this email, you previously registered and requested to reset your password</h1>'// plain text body
     };
     transporter.sendMail(mailOptions, function (err, info) {
       if(err)
@@ -108,6 +101,21 @@ router.post('/forgot', (req, res, next) => {
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
     res.json({failed: true, status: 'No email is entered'});
+    return;
+  }
+});
+
+router.post('/reset', (req, res, next) => {
+  if(req.body.new_password1 === req.body.new_password2) 
+  {
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json({success: true, status: 'Password is successfully reset!'});
+  }
+  else {
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.json({failed: true, status: 'The two passwords do not match'});
     return;
   }
 });

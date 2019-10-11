@@ -1,16 +1,35 @@
 var passport = require('passport');
-var LocalStrategy = require('passport-local').Strategy;
 var User = require('./models/user');
 var JwtStrategy = require('passport-jwt').Strategy;
 var ExtractJwt = require('passport-jwt').ExtractJwt;
 var jwt = require('jsonwebtoken');
-var FacebookTokenStrategy = require('passport-facebook-token');
+var bcrypt = require('bcrypt');
 
 var config = require('./config');
 
-exports.local = passport.use(new LocalStrategy(User.authenticate()));
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+//exports.local = passport.use(new LocalStrategy(User.authenticate()));
+// passport.serializeUser(User.serializeUser());
+// passport.deserializeUser(User.deserializeUser());
+
+exports.userAuthenticate = (req, res, next) => {
+    User.findOne({ username: req.body.username })
+    .then((User) => {
+        bcrypt.compare(req.body.password, User.password, function (err, result) {
+            if (result == true) {
+                next();
+            } else {
+                var err = new Error('The password entered is wrong');
+                err.status = 403;
+                return next(err);
+            }
+          });
+    })
+    .catch((err) => {
+        var err = new Error('Username entered it wrong');
+        err.status = 403;
+        return next(err);
+    });
+}
 
 exports.getToken = function(user) {
     return jwt.sign(user, config.secretkey,
