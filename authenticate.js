@@ -36,6 +36,11 @@ exports.getToken = function(user) {
         {expiresIn: 3600});
 };
 
+exports.getResetToken = function(user) {
+    return jwt.sign(user, config.resetSecretkey,
+        {expiresIn: 1});
+};
+
 var opts = {};
 opts.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();
 opts.secretOrKey = config.secretkey;
